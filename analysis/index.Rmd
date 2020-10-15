@@ -1,5 +1,5 @@
 ---
-title: "Home"
+title: "Repeatability of morphological traits"
 site: workflowr::wflow_site
 output:
   workflowr::wflow_html:
@@ -8,4 +8,13 @@ editor_options:
   chunk_output_type: console
 ---
 
-Welcome to my research website.
+
+Analysis of morphological data for differences in repeatability estimates.
+Zac Wylde & Russell Bonduriansky (2020)
+
+
+### [1. Calculation of bootstrapped R estimates](repeatability.html)
+
+### [2. Wilcox test and linear mixed effects model](linear_mod.html)
+
+### [3. Bayesian model of residual variance](brms_model.html)

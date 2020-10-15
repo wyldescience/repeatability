@@ -7,4 +7,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-Describe your project.
+This code accompanies a manuscript in Ecology & Evolution (under review).
+Here we compare two methods for estimating measurement repeatability using the
+morphology of a fly, *Telostylus angusticollis*.
