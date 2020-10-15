@@ -1,0 +1,208 @@
+---
+title: "linear_mod"
+author: "Z Wylde"
+date: "15/10/2020"
+output: 
+  workflowr::wflow_html:
+    code_folding: hide 
+---
+
+
+
+## Load data and R packages
+
+```{r results='hide', message=F, warning=F}
+
+library(lmerTest)
+library(piecewiseSEM)
+library(sjPlot)
+library(brms)
+library(parallel)
+library(rptR)
+library(rstan)
+library(rstatix)
+library(coin)
+library(kableExtra)
+library(ARTool)
+```
+
+## Paired Wilcox test
+
+``` {r }
+
+#### NOTE: For brevity, code not shown for data wrangling processes where bootstrapped distributions combined into one master data set and factors,
+#### Method, tissue type, trait type, mean trait size and sex added.
+
+
+boot.dist <- read.csv("./data/bootstrap.dist.rptR.csv")
+
+Method.test <- pairwise_wilcox_test(boot.dist, Repeatability ~ Method, p.adjust.method = "none", paired = TRUE, conf.level = 0.95)
+w.ef.size <- wilcox_effsize(boot.dist, Repeatability ~ Method, paired = TRUE, alternative = "two.sided", conf.level = 0.95, nboot = 500)
+
+
+```
+
+## linear mixed effect model on bootstrapped data {.tabset .tabset-fade}
+
+NOTE: For brevity, code not shown for data wrangling processes where bootstrapped distributions combined into one master data set and factors, Method, tissue type, trait type, mean trait size and sex added.
+
+``` {r results='hide', message=F, warning=F}
+boot.dist <- read.csv("./data/bootstrap.dist.rptR.csv")
+
+
+### reading as chr not factors
+
+names <- c('trait' ,'Trait.type', 'sex', 'Method', 'Tissue.type')
+
+boot.dist[,names] <- lapply(boot.dist[,names] , factor)
+
+
+#### need to create summary table of means/ point estimates to run linear mixed effects model otherwise bootstrapped distribution cause hugely inflated df
+
+mean_g <- aggregate(x = boot.dist$Repeatability,                # Specify data column
+          by = list(boot.dist$Method, boot.dist$trait, boot.dist$sex,
+                    boot.dist$Tissue.type, boot.dist$Trait.type, boot.dist$mean.trait.size),              # Specify group indicator
+          FUN = mean)                           # Specify function (i.e. mean)
+
+names(mean_g)[names(mean_g) == "x"] <- "repeat_mean"
+names(mean_g)[names(mean_g) == "Group.1"] <- "method"
+names(mean_g)[names(mean_g) == "Group.2"] <- "trait"
+names(mean_g)[names(mean_g) == "Group.3"] <- "sex"
+names(mean_g)[names(mean_g) == "Group.4"] <- "tissue_type"
+names(mean_g)[names(mean_g) == "Group.5"] <- "trait_type"
+names(mean_g)[names(mean_g) == "Group.6"] <- "mean_size"
+
+## lmer main model on mean repeatability estimates
+
+lm.1 <- lmer(repeat_mean ~ method + mean_size + sex + tissue_type + trait_type +
+               method*sex + method*tissue_type + method*trait_type + method*mean_size + (1|trait), data = mean_g)
+
+summary(lm.1)
+
+coef.lm.1 <- summary(lm.1)$coef
+
+coef.lm.1 %>%
+  kable(digits = 3) %>%
+  kable_styling(full_width = F)
+
+### check model assumptions (normality of residuals)
+mod.check <- plot_model(lm.1, type='diag')
+
+mod.check[[1]] + theme_blank()
+mod.check[[2]] + theme_blank()
+mod.check[[3]] + theme_blank()
+
+```
+
+## calculate conditional effect sizes for each factor/interaction
+
+```{r results='hide', message=F, warning=F}
+lm.2 <- lmer(repeat_mean ~ method + (1|trait), data = mean_g)
+
+summary(lm.2)
+r.2 <- rsquared(lm.2)
+
+lm.3 <- lmer(repeat_mean ~ mean_size + (1|trait), data = mean_g)
+summary(lm.3)
+r.3 <- rsquared(lm.3)
+
+lm.4 <- lmer(repeat_mean ~ sex + (1|trait), data = mean_g)
+summary(lm.4)
+r.4 <- rsquared(lm.4)
+
+lm.5 <- lmer(repeat_mean ~ tissue_type + (1|trait), data = mean_g)
+summary(lm.5)
+r.5 <- rsquared(lm.5)
+
+lm.6 <- lmer(repeat_mean ~ trait_type + (1|trait), data = mean_g)
+summary(lm.6)
+r.6 <- rsquared(lm.6)
+
+lm.7 <- lmer(repeat_mean ~ method*mean_size + (1|trait), data = mean_g)
+summary(lm.7)
+r.7 <- rsquared(lm.7)
+
+lm.8 <- lmer(repeat_mean ~ method*sex + (1|trait), data = mean_g)
+summary(lm.8)
+r.8 <- rsquared(lm.8)
+
+lm.9 <- lmer(repeat_mean ~ method*tissue_type+ (1|trait), data = mean_g)
+summary(lm.9)
+r.9 <- rsquared(lm.9)
+
+lm.10 <- lmer(repeat_mean ~ method*trait_type+ (1|trait), data = mean_g)
+summary(lm.10)
+r.10 <- rsquared(lm.10)
+
+
+
+tabl_effec <- rbind(r.2, r.3, r.4, r.5, r.6, r.7, r.8, r.9, r.10)
+rownames(tabl_effec)[rownames(tabl_effec) == "1"] = "method"
+rownames(tabl_effec)[rownames(tabl_effec) == "2"] = "mean size"
+rownames(tabl_effec)[rownames(tabl_effec) == "3"] = "sex"
+rownames(tabl_effec)[rownames(tabl_effec) == "4"] = "tissue_type"
+rownames(tabl_effec)[rownames(tabl_effec) == "5"] = "trait_type"
+rownames(tabl_effec)[rownames(tabl_effec) == "6"] = "method*mean_size"
+rownames(tabl_effec)[rownames(tabl_effec) == "7"] = "method*sex"
+rownames(tabl_effec)[rownames(tabl_effec) == "8"] = "method*tissue_type"
+rownames(tabl_effec)[rownames(tabl_effec) == "9"] = "method*trait_type"
+
+write.csv(tabl_effec, "./output/effect_sizelmer.csv")
+```
+
+
+## plot significant interactions of Method* sex, trait type and tissue type {.tabset .tabset-fade}
+
+### method*sex interaction plot
+``` {r include = T}
+plot_model(lm.8, type = "pred", terms = c("method", "sex")) + theme_classic()
+```
+
+### method*tissue type interaction plot
+``` {r include = T}
+plot_model(lm.9, type = "eff", terms = c("method", "tissue_type")) + theme_classic()
+```
+
+### method*trait type interaction plot
+``` {r include = T}
+plot_model(lm.10, type = "eff", terms = c("method", "trait_type")) + theme_classic()
+```
+
+
+## non-parametric tests using ARTool package
+
+``` {r results='hide', message=F, warning=F}
+a <- art(repeat_mean ~ method*tissue_type, data = mean_g)
+
+a_a <- anova(a)
+
+b <- art(repeat_mean ~ method*sex, data = mean_g)
+
+b_a <-anova(b)
+
+d <- art(repeat_mean ~ method*trait_type, data = mean_g)
+
+d_a <- anova(d)
+
+e <- art(repeat_mean ~ method, data = mean_g)
+
+e_a <- anova(e)
+
+f <- art(repeat_mean ~ sex, data = mean_g)
+
+f_a <- anova(f)
+
+g <- art(repeat_mean ~ tissue_type, data = mean_g)
+
+g_a <- anova(g)
+
+h <- art(repeat_mean ~ trait_type, data = mean_g)
+
+h_a <- anova(h)
+
+
+tab <- rbind(a_a,b_a,d_a,e_a,f_a,g_a,h_a)
+print(tab)
+
+write.csv(tab, "./output/ARTool.csv")
+```

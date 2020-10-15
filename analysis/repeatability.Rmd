@@ -1,0 +1,297 @@
+---
+title: "repeatability"
+author: "Z Wylde"
+date: "15/10/2020"
+output: 
+  workflowr::wflow_html:
+    code_folding: hide 
+---
+
+## Load data and R packages
+
+```{r results='hide', message=F, warning=F}
+
+library(lmerTest)
+library(piecewiseSEM)
+library(sjPlot)
+library(brms)
+library(parallel)
+library(rptR)
+library(rstan)
+library(rstatix)
+library(coin)
+library(kableExtra)
+
+single <- read.csv("./data/single.mounted.csv") ###  measures of raw values of traits measured on a single mounted specimen same image
+remount <- read.csv("./data/remounted.csv") ###  measures of raw values of traits measured between two placements of specimen (separate image)
+
+names(single)
+names(remount)
+
+names <- c('Family' ,'I.D', 'Sample', 'Sex', 'Condition',
+           'Larval.diet')
+
+single[,names] <- lapply(single[,names] , factor)
+remount[,names] <- lapply(remount[,names] , factor)
+
+### subset by sex for each method
+
+M.sgle <- subset(single, Sex == "M")
+M.rem <- subset(remount, Sex == "M")
+
+F.sgle <- subset(single, Sex == "F")
+F.rem <- subset(remount, Sex == "F")
+```
+
+## Calculate repeatability within sex and method {.tabset .tabset-fade}
+
+### males: single-mounted
+
+``` {r , results='hide', message=F, warning=F}
+
+FE.sgle.M <- rpt(FE ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+FT.sgle.M <- rpt(FT ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Fta.sgle.M <- rpt(Fta ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+WL.sgle.M <- rpt(WL ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+TL.sgle.M <- rpt(TL ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+HW.sgle.M <- rpt(HW ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+HL.sgle.M <- rpt(HL ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+PP.sgle.M <- rpt(PP ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+AR.sgle.M <- rpt(AR ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Sur_P.sgle.M <- rpt(Sur_P ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Sur_D.sgle.M <- rpt(Sur_D ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Apod.sgle.M <- rpt(Apod ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+AL.sgle.M <- rpt(AL ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+SP.sgle.M <- rpt(SP ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+PR.sgle.M <- rpt(PR ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+TE.sgle.M <- rpt(TE ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+SB.sgle.M <- rpt(SB ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+FSp.sgle.M <- rpt(FSp ~ Larval.diet + (1|I.D), grname = "I.D", data = M.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+### create data table of bootstrapped  repeatability values
+
+bind.sgle.M.boot <- cbind(FE.sgle.M$R_boot, FT.sgle.M$R_boot, Fta.sgle.M$R_boot, WL.sgle.M$R_boot, TL.sgle.M$R_boot, HW.sgle.M$R_boot,
+                          HL.sgle.M$R_boot, PP.sgle.M$R_boot, AR.sgle.M$R_boot, Sur_P.sgle.M$R_boot, Sur_D.sgle.M$R_boot, Apod.sgle.M$R_boot,
+                          AL.sgle.M$R_boot, SP.sgle.M$R_boot, PR.sgle.M$R_boot, TE.sgle.M$R_boot, SB.sgle.M$R_boot, FSp.sgle.M$R_boot)
+
+names(bind.sgle.M.boot)[1] <- "FE"
+names(bind.sgle.M.boot)[2] <- "FT"
+names(bind.sgle.M.boot)[3] <- "Fta"
+names(bind.sgle.M.boot)[4] <- "WL"
+names(bind.sgle.M.boot)[5] <- "TL"
+names(bind.sgle.M.boot)[6] <- "HW"
+names(bind.sgle.M.boot)[7] <- "HL"
+names(bind.sgle.M.boot)[8] <- "PP"
+names(bind.sgle.M.boot)[9] <- "AR"
+names(bind.sgle.M.boot)[10] <- "Sur_P"
+names(bind.sgle.M.boot)[11] <- "Sur_D"
+names(bind.sgle.M.boot)[12] <- "Apod"
+names(bind.sgle.M.boot)[13] <- "AL"
+names(bind.sgle.M.boot)[14] <- "SP"
+names(bind.sgle.M.boot)[15] <- "PR"
+names(bind.sgle.M.boot)[16] <- "TE"
+names(bind.sgle.M.boot)[17] <- "SB"
+names(bind.sgle.M.boot)[18] <- "FSp"
+
+
+write.csv(bind.sgle.M.boot, "./output/bind.sgle.M.boot.csv")
+
+```
+
+
+### males: remounted
+
+``` {r results='hide', message=F, warning=F}
+
+FE.rmnt.M <- rpt(FE ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+FT.rmnt.M <- rpt(FT ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Fta.rmnt.M <- rpt(Fta ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+WL.rmnt.M <- rpt(WL ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+TL.rmnt.M <- rpt(TL ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+HW.rmnt.M <- rpt(HW ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+HL.rmnt.M <- rpt(HL ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+PP.rmnt.M <- rpt(PP ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+AR.rmnt.M <- rpt(AR ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Sur_P.rmnt.M <- rpt(Sur_P ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Sur_D.rmnt.M <- rpt(Sur_D ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Apod.rmnt.M <- rpt(Apod ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+AL.rmnt.M <- rpt(AL ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+SP.rmnt.M <- rpt(SP ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+PR.rmnt.M <- rpt(PR ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+TE.rmnt.M <- rpt(TE ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+SB.rmnt.M <- rpt(SB ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+FSp.rmnt.M <- rpt(FSp ~ Larval.diet + (1|I.D), grname = "I.D", data = M.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+
+
+bind.rmnt.M.boot <- cbind(FE.rmnt.M$R_boot, FT.rmnt.M$R_boot, Fta.rmnt.M$R_boot, WL.rmnt.M$R_boot, TL.rmnt.M$R_boot, HW.rmnt.M$R_boot,
+                          HL.rmnt.M$R_boot, PP.rmnt.M$R_boot, AR.rmnt.M$R_boot, Sur_P.rmnt.M$R_boot, Sur_D.rmnt.M$R_boot, Apod.rmnt.M$R_boot,
+                          AL.rmnt.M$R_boot, SP.rmnt.M$R_boot, PR.rmnt.M$R_boot, TE.rmnt.M$R_boot, SB.rmnt.M$R_boot, FSp.rmnt.M$R_boot)
+
+
+names(bind.rmnt.M.boot)[1] <- "FE"
+names(bind.rmnt.M.boot)[2] <- "FT"
+names(bind.rmnt.M.boot)[3] <- "Fta"
+names(bind.rmnt.M.boot)[4] <- "WL"
+names(bind.rmnt.M.boot)[5] <- "TL"
+names(bind.rmnt.M.boot)[6] <- "HW"
+names(bind.rmnt.M.boot)[7] <- "HL"
+names(bind.rmnt.M.boot)[8] <- "PP"
+names(bind.rmnt.M.boot)[9] <- "AR"
+names(bind.rmnt.M.boot)[10] <- "Sur_P"
+names(bind.rmnt.M.boot)[11] <- "Sur_D"
+names(bind.rmnt.M.boot)[12] <- "Apod"
+names(bind.rmnt.M.boot)[13] <- "AL"
+names(bind.rmnt.M.boot)[14] <- "SP"
+names(bind.rmnt.M.boot)[15] <- "PR"
+names(bind.rmnt.M.boot)[16] <- "TE"
+names(bind.rmnt.M.boot)[17] <- "SB"
+names(bind.rmnt.M.boot)[18] <- "FSp"
+
+write.csv(bind.rmnt.M.boot, "./output/bind.rmnt.M.boot.csv")
+```
+
+### Females single-mounted
+
+```{r results='hide', message=F, warning=F}
+FE.sgle.F <- rpt(FE ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+FT.sgle.F <- rpt(FT ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Fta.sgle.F <- rpt(Fta ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+WL.sgle.F <- rpt(WL ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+HW.sgle.F <- rpt(HW ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+HL.sgle.F <- rpt(HL ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+PP.sgle.F <- rpt(PP ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+AR.sgle.F <- rpt(AR ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+TL.sgle.F <- rpt(TL ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+OVL.sgle.F <- rpt(OVL ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+PS1.sgle.F <- rpt(PS1 ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+PS2.sgle.F <- rpt(PS2 ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Ant.sgle.F <- rpt(Ant ~ Larval.diet + (1|I.D), grname = "I.D", data = F.sgle, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+
+
+bind.sgle.F.boot <- cbind(FE.sgle.F$R_boot, FT.sgle.F$R_boot, Fta.sgle.F$R_boot, WL.sgle.F$R_boot, HW.sgle.F$R_boot, HL.sgle.F$R_boot, PP.sgle.F$R_boot,
+                          AR.sgle.F$R_boot, TL.sgle.F$R_boot, OVL.sgle.F$R_boot, PS1.sgle.F$R_boot, PS2.sgle.F$R_boot, Ant.sgle.F$R_boot)
+
+names(bind.sgle.F.boot)[1] <- "FE"
+names(bind.sgle.F.boot)[2] <- "FT"
+names(bind.sgle.F.boot)[3] <- "Fta"
+names(bind.sgle.F.boot)[4] <- "WL"
+names(bind.sgle.F.boot)[5] <- "HW"
+names(bind.sgle.F.boot)[6] <- "HL"
+names(bind.sgle.F.boot)[7] <- "PP"
+names(bind.sgle.F.boot)[8] <- "AR"
+names(bind.sgle.F.boot)[9] <- "TL"
+names(bind.sgle.F.boot)[10] <- "OVL"
+names(bind.sgle.F.boot)[11] <- "PS1"
+names(bind.sgle.F.boot)[12] <- "PS2"
+names(bind.sgle.F.boot)[13] <- "Ant"
+
+
+
+write.csv(bind.sgle.F.boot, "./output/bind.sgle.F.boot.csv")
+```
+
+### Females double mounted
+
+``` {r results='hide', message=F, warning=F}
+FE.rmnt.F <- rpt(FE ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+FT.rmnt.F <- rpt(FT ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Fta.rmnt.F <- rpt(Fta ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+WL.rmnt.F <- rpt(WL ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+HW.rmnt.F <- rpt(HW ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+HL.rmnt.F <- rpt(HL ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+PP.rmnt.F <- rpt(PP ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+AR.rmnt.F <- rpt(AR ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+TL.rmnt.F <- rpt(TL ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+OVL.rmnt.F <- rpt(OVL ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+PS1.rmnt.F <- rpt(PS1 ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+PS2.rmnt.F <- rpt(PS2 ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+Ant.rmnt.F <- rpt(Ant ~ Larval.diet + (1|I.D), grname = "I.D", data = F.rem, datatype = "Gaussian", nboot = 1000, npermut = 500)
+
+
+
+bind.rmnt.F.boot <- cbind(FE.rmnt.F$R_boot, FT.rmnt.F$R_boot, Fta.rmnt.F$R_boot, WL.rmnt.F$R_boot, HW.rmnt.F$R_boot, HL.rmnt.F$R_boot, PP.rmnt.F$R_boot,
+                          AR.rmnt.F$R_boot, TL.rmnt.F$R_boot, OVL.rmnt.F$R_boot, PS1.rmnt.F$R_boot, PS2.rmnt.F$R_boot, Ant.rmnt.F$R_boot)
+
+names(bind.rmnt.F.boot)[1] <- "FE"
+names(bind.rmnt.F.boot)[2] <- "FT"
+names(bind.rmnt.F.boot)[3] <- "Fta"
+names(bind.rmnt.F.boot)[4] <- "WL"
+names(bind.rmnt.F.boot)[5] <- "HW"
+names(bind.rmnt.F.boot)[6] <- "HL"
+names(bind.rmnt.F.boot)[7] <- "PP"
+names(bind.rmnt.F.boot)[8] <- "AR"
+names(bind.rmnt.F.boot)[9] <- "TL"
+names(bind.rmnt.F.boot)[10] <- "OVL"
+names(bind.rmnt.F.boot)[11] <- "PS1"
+names(bind.rmnt.F.boot)[12] <- "PS2"
+names(bind.rmnt.F.boot)[13] <- "Ant"
+
+write.csv(bind.rmnt.F.boot, "./output/bind.rmnt.F.boot.csv")
+
+```
+
+
+
+
+
+

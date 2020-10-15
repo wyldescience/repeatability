@@ -1,0 +1,86 @@
+---
+title: "brms_model"
+author: "Z Wylde"
+date: "15/10/2020"
+output: 
+  workflowr::wflow_html:
+    code_folding: hide 
+---
+
+## Load data and R packages
+
+```{r results='hide', message=F, warning=F}
+
+library(lmerTest)
+library(piecewiseSEM)
+library(sjPlot)
+library(brms)
+library(parallel)
+library(rptR)
+library(rstan)
+library(rstatix)
+library(coin)
+library(kableExtra)
+library(ARTool)
+
+
+boot.dist <- read.csv("./data/bootstrap.dist.rptR.csv")
+
+```
+
+## brms model of changes in variance as function of method and mean trait size
+
+R version 4.0.2 seems to have issues with stan. If so use this code to revert from stan 2.21-> 2.19
+
+packageurl <- "http://cran.r-project.org/src/contrib/Archive/rstan/rstan_2.19.3.tar.gz"
+install.packages(packageurl, repos = NULL, type = "source")
+
+if other issue try this thread:
+https://discourse.mc-stan.org/t/potential-problems-with-rstan-and-or-brms-packages-in-r-4-0-2/16479/14
+
+## brs model formula {.tabset .tabset-fade}
+
+``` {r results='hide', message=F, warning=F}
+HLM = bf(Repeatability ~ 1 + (1|trait), sigma ~ Method)
+get_prior(HLM, data = boot.dist) # check and adjust priors
+HLM.fit <- brm(HLM, data = boot.dist, seed = 12345,
+               warmup = 1000,
+               iter = 3000,
+               chains = 2,
+               cores = 2)
+
+saveRDS(HLM.fit, "./output/HLM.fit.rds")
+prior_summary(HLM.fit) ## check and adjust priors
+
+s.test <- summary(HLM.fit)
+
+s.test.fixed.pars <- s.test$fixed ### get fixed effects
+write.csv(s.test.fixed.pars, "./output/HLM.fitFixEff.csv")
+```
+
+### diagnostics {.tabset .tabset-fade}
+
+``` {r results='hide', message=F, warning=F}
+plot(HLM.fit)
+pairs(HLM.fit)
+plot(conditional_effects(HLM.fit), points = TRUE)
+pp_check(HLM.fit) ### great fit
+
+
+### get posterior samples
+
+post_sum <- posterior_summary(HLM.fit)
+
+write.csv(post_sum, "./output/HLM_post_sum.brms.csv")
+
+samples <- posterior_samples(HLM.fit, "b")
+
+gather(samples, Type, value) %>%
+  ggplot(aes(value, fill=Type)) +
+  geom_density() +
+  labs(x = bquote(theta), y = "Density") +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_vline(xintercept = 0)  # Vertical line at .89
+
+```
